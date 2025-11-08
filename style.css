@@ -69,6 +69,19 @@ header p {
     margin-bottom: 1.5rem;
 }
 
+.section h3 {
+    color: var(--secondary-color);
+    margin-top: 2rem;
+    margin-bottom: 1rem;
+    font-size: 1.25rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 2px solid var(--border-color);
+}
+
+.section h3:first-of-type {
+    margin-top: 0;
+}
+
 .hidden {
     display: none !important;
 }
@@ -119,16 +132,19 @@ header p {
     font-weight: 600;
 }
 
-.form-group input {
+.form-group input,
+.form-group select {
     width: 100%;
     padding: 0.75rem;
     border: 2px solid var(--border-color);
     border-radius: 8px;
     font-size: 1rem;
     transition: border-color 0.2s ease;
+    background-color: var(--card-background);
 }
 
-.form-group input:focus {
+.form-group input:focus,
+.form-group select:focus {
     outline: none;
     border-color: var(--primary-color);
 }

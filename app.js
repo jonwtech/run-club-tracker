@@ -177,7 +177,7 @@ async function getStravaActivities(accessToken) {
 }
 
 // Check if an activity qualifies as a Run Club run
-function isRunClubActivity(activity, clubLat, clubLon, maxDistanceKm) {
+function isRunClubActivity(activity, clubLat, clubLon, maxDistanceKm, dayOfWeek, startTime, timeWindow) {
     // Check if it's a run
     if (activity.type !== 'Run') {
         return false;
@@ -210,17 +210,23 @@ function isRunClubActivity(activity, clubLat, clubLon, maxDistanceKm) {
         const dateString = startDateLocal.replace('Z', '');
         const dt = new Date(dateString);
 
-        // Check if Tuesday (getDay() returns 0 for Sunday, 1 for Monday, 2 for Tuesday, etc.)
-        if (dt.getDay() !== 2) {
+        // Check day of week (0 = Sunday, 1 = Monday, etc.)
+        if (dt.getDay() !== dayOfWeek) {
             return false;
         }
 
-        // Check if between 18:45 and 19:15
+        // Parse start time (format: "HH:MM")
+        const [targetHours, targetMinutes] = startTime.split(':').map(Number);
+        const targetTimeInMinutes = targetHours * 60 + targetMinutes;
+
+        // Calculate time window
+        const minTime = targetTimeInMinutes - timeWindow;
+        const maxTime = targetTimeInMinutes + timeWindow;
+
+        // Check if activity started within the time window
         const hours = dt.getHours();
         const minutes = dt.getMinutes();
         const totalMinutes = hours * 60 + minutes;
-        const minTime = 18 * 60 + 45; // 18:45
-        const maxTime = 19 * 60 + 15; // 19:15
 
         if (totalMinutes < minTime || totalMinutes > maxTime) {
             return false;
@@ -260,7 +266,7 @@ function formatTime(seconds) {
 }
 
 // Analyze activities
-async function analyzeActivities(clubLat, clubLon, radiusKm) {
+async function analyzeActivities(clubLat, clubLon, radiusKm, dayOfWeek, startTime, timeWindow) {
     showSection('loading');
 
     try {
@@ -275,7 +281,7 @@ async function analyzeActivities(clubLat, clubLon, radiusKm) {
 
         // Filter for run club activities
         const runClubActivities = activities.filter(activity =>
-            isRunClubActivity(activity, clubLat, clubLon, radiusKm)
+            isRunClubActivity(activity, clubLat, clubLon, radiusKm, dayOfWeek, startTime, timeWindow)
         );
 
         // Calculate stats
@@ -395,13 +401,21 @@ configForm.addEventListener('submit', (e) => {
     const latitude = parseFloat(document.getElementById('latitude').value);
     const longitude = parseFloat(document.getElementById('longitude').value);
     const radius = parseFloat(document.getElementById('radius').value);
+    const dayOfWeek = parseInt(document.getElementById('dayOfWeek').value);
+    const startTime = document.getElementById('startTime').value;
+    const timeWindow = parseInt(document.getElementById('timeWindow').value);
 
     if (isNaN(latitude) || isNaN(longitude) || isNaN(radius)) {
         showError('Please enter valid coordinates and radius.');
         return;
     }
 
-    analyzeActivities(latitude, longitude, radius);
+    if (isNaN(dayOfWeek) || !startTime || isNaN(timeWindow)) {
+        showError('Please enter valid day, start time, and time window.');
+        return;
+    }
+
+    analyzeActivities(latitude, longitude, radius, dayOfWeek, startTime, timeWindow);
 });
 
 logoutBtn.addEventListener('click', logout);

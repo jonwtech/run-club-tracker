@@ -1,7 +1,7 @@
 // Strava Run Club Tracker - Static Website Version
 // OAuth configuration - users will need to set their own client ID
 const STRAVA_CONFIG = {
-    clientId: 'YOUR_STRAVA_CLIENT_ID', // Replace with your Strava app client ID
+    clientId: '183792',
     redirectUri: window.location.origin + window.location.pathname,
     authUrl: 'https://www.strava.com/oauth/authorize',
     tokenUrl: 'https://www.strava.com/oauth/token',

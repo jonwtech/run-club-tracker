@@ -387,6 +387,26 @@ function logout() {
     showSection('login');
 }
 
+// Apply CMRC defaults to form fields
+function applyCMRCDefaults() {
+    document.getElementById('latitude').value = '51.417408';
+    document.getElementById('longitude').value = '-0.057741';
+    document.getElementById('radius').value = '0.5';
+    document.getElementById('dayOfWeek').value = '2'; // Tuesday
+    document.getElementById('startTime').value = '19:00';
+    document.getElementById('timeWindow').value = '15';
+}
+
+// Clear form fields
+function clearFormFields() {
+    document.getElementById('latitude').value = '';
+    document.getElementById('longitude').value = '';
+    document.getElementById('radius').value = '0.5'; // Keep default radius
+    document.getElementById('dayOfWeek').value = '2'; // Keep default Tuesday
+    document.getElementById('startTime').value = '19:00'; // Keep default time
+    document.getElementById('timeWindow').value = '15'; // Keep default window
+}
+
 // Event listeners
 connectBtn.addEventListener('click', () => {
     if (STRAVA_CONFIG.clientSecret === 'YOUR_STRAVA_CLIENT_SECRET') {
@@ -428,8 +448,23 @@ retryBtn.addEventListener('click', () => {
     showSection('login');
 });
 
+// CMRC defaults checkbox handler
+const useCMRCDefaultsCheckbox = document.getElementById('useCMRCDefaults');
+useCMRCDefaultsCheckbox.addEventListener('change', (e) => {
+    if (e.target.checked) {
+        applyCMRCDefaults();
+    } else {
+        clearFormFields();
+    }
+});
+
 // Initialize app
 async function init() {
+    // Initialize CMRC defaults if checkbox is checked
+    if (useCMRCDefaultsCheckbox.checked) {
+        applyCMRCDefaults();
+    }
+
     // Check for OAuth callback (code in query params for authorization code flow)
     const urlParams = new URLSearchParams(window.location.search);
 

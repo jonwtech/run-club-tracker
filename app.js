@@ -1,7 +1,8 @@
 // Strava Run Club Tracker - Static Website Version
-// OAuth configuration - users will need to set their own client ID
+// OAuth configuration loaded from config.js
 const STRAVA_CONFIG = {
-    clientId: '183792',
+    clientId: window.APP_CONFIG?.STRAVA_CLIENT_ID || 'YOUR_STRAVA_CLIENT_ID',
+    clientSecret: window.APP_CONFIG?.STRAVA_CLIENT_SECRET || 'YOUR_STRAVA_CLIENT_SECRET',
     redirectUri: window.location.origin + window.location.pathname,
     authUrl: 'https://www.strava.com/oauth/authorize',
     tokenUrl: 'https://www.strava.com/oauth/token',
@@ -47,11 +48,11 @@ async function startAuth() {
     // Store for later use
     sessionStorage.setItem('oauth_state', state);
 
-    // Build auth URL (simplified - no PKCE since Strava doesn't fully support it)
+    // Build auth URL - using authorization code flow (Strava requirement)
     const params = new URLSearchParams({
         client_id: STRAVA_CONFIG.clientId,
         redirect_uri: STRAVA_CONFIG.redirectUri,
-        response_type: 'token',
+        response_type: 'code',
         scope: STRAVA_CONFIG.scope,
         state: state,
         approval_prompt: 'auto'
@@ -60,10 +61,11 @@ async function startAuth() {
     window.location.href = `${STRAVA_CONFIG.authUrl}?${params.toString()}`;
 }
 
-// OAuth: Handle callback (implicit grant - token in URL hash)
+// OAuth: Handle callback and exchange code for token
 async function handleCallback() {
-    // Check for errors in query params
     const urlParams = new URLSearchParams(window.location.search);
+    const code = urlParams.get('code');
+    const state = urlParams.get('state');
     const error = urlParams.get('error');
 
     if (error) {
@@ -72,29 +74,46 @@ async function handleCallback() {
         return;
     }
 
-    // Check for token in URL hash (implicit grant)
-    const hash = window.location.hash.substring(1);
-    const hashParams = new URLSearchParams(hash);
-    const accessToken = hashParams.get('access_token');
-    const expiresIn = hashParams.get('expires_in');
-    const state = hashParams.get('state');
-
-    if (accessToken) {
+    if (code && state) {
         const storedState = sessionStorage.getItem('oauth_state');
 
-        if (state && state !== storedState) {
+        if (state !== storedState) {
             showError('Invalid state parameter. Please try again.');
             window.history.replaceState({}, document.title, window.location.pathname);
             return;
         }
 
         try {
-            // Calculate expiration time
-            const expiresAt = Math.floor(Date.now() / 1000) + parseInt(expiresIn || '21600'); // Default 6 hours
+            // Exchange code for token using application/x-www-form-urlencoded
+            const params = new URLSearchParams({
+                client_id: STRAVA_CONFIG.clientId,
+                client_secret: STRAVA_CONFIG.clientSecret,
+                code: code,
+                grant_type: 'authorization_code'
+            });
+
+            const response = await fetch(STRAVA_CONFIG.tokenUrl, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                },
+                body: params.toString()
+            });
+
+            if (!response.ok) {
+                const errorData = await response.text();
+                throw new Error(`Token exchange failed: ${response.status} - ${errorData}`);
+            }
+
+            const data = await response.json();
 
             // Store access token
-            sessionStorage.setItem('access_token', accessToken);
-            sessionStorage.setItem('expires_at', expiresAt);
+            sessionStorage.setItem('access_token', data.access_token);
+            sessionStorage.setItem('expires_at', data.expires_at);
+            sessionStorage.setItem('refresh_token', data.refresh_token);
+            if (data.athlete) {
+                sessionStorage.setItem('athlete', JSON.stringify(data.athlete));
+            }
 
             // Clean up
             sessionStorage.removeItem('oauth_state');
@@ -360,8 +379,8 @@ function logout() {
 
 // Event listeners
 connectBtn.addEventListener('click', () => {
-    if (STRAVA_CONFIG.clientId === 'YOUR_STRAVA_CLIENT_ID') {
-        showError('Please configure your Strava Client ID in app.js. See the deployment documentation for details.');
+    if (STRAVA_CONFIG.clientSecret === 'YOUR_STRAVA_CLIENT_SECRET') {
+        showError('Please configure your Strava credentials in config.js. See CONFIG.md for details.');
         return;
     }
     startAuth();
@@ -393,11 +412,10 @@ retryBtn.addEventListener('click', () => {
 
 // Initialize app
 async function init() {
-    // Check for OAuth callback (token in hash for implicit grant)
-    const hash = window.location.hash;
+    // Check for OAuth callback (code in query params for authorization code flow)
     const urlParams = new URLSearchParams(window.location.search);
 
-    if (hash.includes('access_token') || urlParams.has('error')) {
+    if (urlParams.has('code') || urlParams.has('error')) {
         await handleCallback();
         return;
     }

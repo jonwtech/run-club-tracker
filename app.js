@@ -42,33 +42,28 @@ async function generateCodeChallenge(codeVerifier) {
 
 // OAuth: Start authentication flow
 async function startAuth() {
-    const codeVerifier = generateRandomString(128);
-    const codeChallenge = await generateCodeChallenge(codeVerifier);
     const state = generateRandomString(32);
 
     // Store for later use
-    sessionStorage.setItem('code_verifier', codeVerifier);
     sessionStorage.setItem('oauth_state', state);
 
-    // Build auth URL
+    // Build auth URL (simplified - no PKCE since Strava doesn't fully support it)
     const params = new URLSearchParams({
         client_id: STRAVA_CONFIG.clientId,
         redirect_uri: STRAVA_CONFIG.redirectUri,
-        response_type: 'code',
+        response_type: 'token',
         scope: STRAVA_CONFIG.scope,
         state: state,
-        code_challenge: codeChallenge,
-        code_challenge_method: 'S256'
+        approval_prompt: 'auto'
     });
 
     window.location.href = `${STRAVA_CONFIG.authUrl}?${params.toString()}`;
 }
 
-// OAuth: Handle callback and exchange code for token
+// OAuth: Handle callback (implicit grant - token in URL hash)
 async function handleCallback() {
+    // Check for errors in query params
     const urlParams = new URLSearchParams(window.location.search);
-    const code = urlParams.get('code');
-    const state = urlParams.get('state');
     const error = urlParams.get('error');
 
     if (error) {
@@ -77,44 +72,31 @@ async function handleCallback() {
         return;
     }
 
-    if (code && state) {
-        const storedState = sessionStorage.getItem('oauth_state');
-        const codeVerifier = sessionStorage.getItem('code_verifier');
+    // Check for token in URL hash (implicit grant)
+    const hash = window.location.hash.substring(1);
+    const hashParams = new URLSearchParams(hash);
+    const accessToken = hashParams.get('access_token');
+    const expiresIn = hashParams.get('expires_in');
+    const state = hashParams.get('state');
 
-        if (state !== storedState) {
+    if (accessToken) {
+        const storedState = sessionStorage.getItem('oauth_state');
+
+        if (state && state !== storedState) {
             showError('Invalid state parameter. Please try again.');
             window.history.replaceState({}, document.title, window.location.pathname);
             return;
         }
 
         try {
-            // Exchange code for token
-            const response = await fetch(STRAVA_CONFIG.tokenUrl, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    client_id: STRAVA_CONFIG.clientId,
-                    code: code,
-                    code_verifier: codeVerifier,
-                    grant_type: 'authorization_code'
-                })
-            });
-
-            if (!response.ok) {
-                throw new Error(`Token exchange failed: ${response.status}`);
-            }
-
-            const data = await response.json();
+            // Calculate expiration time
+            const expiresAt = Math.floor(Date.now() / 1000) + parseInt(expiresIn || '21600'); // Default 6 hours
 
             // Store access token
-            sessionStorage.setItem('access_token', data.access_token);
-            sessionStorage.setItem('expires_at', data.expires_at);
-            sessionStorage.setItem('athlete', JSON.stringify(data.athlete));
+            sessionStorage.setItem('access_token', accessToken);
+            sessionStorage.setItem('expires_at', expiresAt);
 
             // Clean up
-            sessionStorage.removeItem('code_verifier');
             sessionStorage.removeItem('oauth_state');
             window.history.replaceState({}, document.title, window.location.pathname);
 
@@ -411,9 +393,11 @@ retryBtn.addEventListener('click', () => {
 
 // Initialize app
 async function init() {
-    // Check for OAuth callback
+    // Check for OAuth callback (token in hash for implicit grant)
+    const hash = window.location.hash;
     const urlParams = new URLSearchParams(window.location.search);
-    if (urlParams.has('code') || urlParams.has('error')) {
+
+    if (hash.includes('access_token') || urlParams.has('error')) {
         await handleCallback();
         return;
     }

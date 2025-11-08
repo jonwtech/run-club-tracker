@@ -204,7 +204,11 @@ function isRunClubActivity(activity, clubLat, clubLon, maxDistanceKm) {
 
     try {
         // Parse ISO 8601 format
-        const dt = new Date(startDateLocal);
+        // IMPORTANT: Strava's start_date_local is in the activity's local timezone
+        // but may have a 'Z' suffix. We need to treat it as-is without timezone conversion.
+        // Remove the 'Z' suffix if present to parse as local time
+        const dateString = startDateLocal.replace('Z', '');
+        const dt = new Date(dateString);
 
         // Check if Tuesday (getDay() returns 0 for Sunday, 1 for Monday, 2 for Tuesday, etc.)
         if (dt.getDay() !== 2) {

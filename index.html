@@ -98,16 +98,44 @@
                     </select>
                 </div>
 
-                <div class="form-group">
-                    <label for="startTime">Start Time:</label>
-                    <input type="time" id="startTime" value="19:00" required>
-                    <small>The typical start time for your run club</small>
+                <h3>Start Time</h3>
+                <div class="form-group-checkbox">
+                    <label>
+                        <input type="checkbox" id="startTimeAny">
+                        Any time
+                    </label>
                 </div>
 
                 <div class="form-group">
-                    <label for="timeWindow">Time Window (minutes):</label>
-                    <input type="number" id="timeWindow" value="15" min="1" max="60" required>
+                    <label for="startTime">Start Time:</label>
+                    <input type="time" id="startTime" value="19:00">
+                    <small>Activities starting at this time will be counted</small>
+                </div>
+
+                <div class="form-group">
+                    <label for="startTimeWindow">Time Window (minutes):</label>
+                    <input type="number" id="startTimeWindow" value="15" min="1" max="120">
                     <small>Activities starting within ± this many minutes from start time will be counted</small>
+                </div>
+
+                <h3>End Time</h3>
+                <div class="form-group-checkbox">
+                    <label>
+                        <input type="checkbox" id="endTimeAny" checked>
+                        Any time
+                    </label>
+                </div>
+
+                <div class="form-group">
+                    <label for="endTime">End Time:</label>
+                    <input type="time" id="endTime" value="19:30">
+                    <small>Activities ending at this time will be counted</small>
+                </div>
+
+                <div class="form-group">
+                    <label for="endTimeWindow">Time Window (minutes):</label>
+                    <input type="number" id="endTimeWindow" value="15" min="1" max="120">
+                    <small>Activities ending within ± this many minutes from end time will be counted</small>
                 </div>
 
                 <button type="submit" class="btn btn-primary">Analyze Activities</button>

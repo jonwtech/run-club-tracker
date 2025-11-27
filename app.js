@@ -25,7 +25,11 @@ const PROFILES = {
             lon: -0.057741,
             radius: 0.5
         },
-        dayOfWeek: 2, // Tuesday
+        day: {
+            any: false,
+            startDay: 2,  // Tuesday
+            endDay: 2     // Same day
+        },
         startTime: {
             any: true,
             time: null,
@@ -51,7 +55,11 @@ const PROFILES = {
             lon: -0.0630248176967856,
             radius: 0.5
         },
-        dayOfWeek: 6, // Saturday
+        day: {
+            any: false,
+            startDay: 6,  // Saturday
+            endDay: 6     // Same day
+        },
         startTime: {
             any: false,
             time: '09:00',
@@ -78,7 +86,11 @@ const PROFILES = {
             lon: null,
             radius: 0.5
         },
-        dayOfWeek: 2, // Tuesday
+        day: {
+            any: false,
+            startDay: 2,  // Tuesday
+            endDay: 2     // Same day
+        },
         startTime: {
             any: false,
             time: '19:00',
@@ -260,7 +272,7 @@ async function getStravaActivities(accessToken) {
 }
 
 // Check if an activity qualifies as a Run Club run
-function isRunClubActivity(activity, startLocation, finishLocation, dayOfWeek, startTime, endTime) {
+function isRunClubActivity(activity, startLocation, finishLocation, day, startTime, endTime) {
     // Check if it's a run
     if (activity.type !== 'Run') {
         return false;
@@ -310,9 +322,24 @@ function isRunClubActivity(activity, startLocation, finishLocation, dayOfWeek, s
         const dateString = startDateLocal.replace('Z', '');
         const activityStartDate = new Date(dateString);
 
-        // Check day of week (0 = Sunday, 1 = Monday, etc.)
-        if (activityStartDate.getDay() !== dayOfWeek) {
-            return false;
+        // Check day of week (if specified)
+        if (day && !day.any) {
+            // Check start day
+            if (activityStartDate.getDay() !== day.startDay) {
+                return false;
+            }
+
+            // Check end day (if different from start day)
+            if (day.endDay !== day.startDay) {
+                // Calculate activity end time
+                const elapsedTimeSeconds = activity.elapsed_time;
+                if (elapsedTimeSeconds) {
+                    const activityEndDate = new Date(activityStartDate.getTime() + elapsedTimeSeconds * 1000);
+                    if (activityEndDate.getDay() !== day.endDay) {
+                        return false;
+                    }
+                }
+            }
         }
 
         // Check start time (if specified)
@@ -391,7 +418,7 @@ function formatTime(seconds) {
 }
 
 // Analyze activities
-async function analyzeActivities(startLocation, finishLocation, dayOfWeek, startTime, endTime) {
+async function analyzeActivities(startLocation, finishLocation, day, startTime, endTime) {
     showSection('loading');
 
     try {
@@ -406,7 +433,7 @@ async function analyzeActivities(startLocation, finishLocation, dayOfWeek, start
 
         // Filter for run club activities
         const runClubActivities = activities.filter(activity =>
-            isRunClubActivity(activity, startLocation, finishLocation, dayOfWeek, startTime, endTime)
+            isRunClubActivity(activity, startLocation, finishLocation, day, startTime, endTime)
         );
 
         // Calculate stats
@@ -526,8 +553,10 @@ function applyProfile(profile) {
     document.getElementById('finishLongitude').value = profile.finishLocation.lon || '';
     document.getElementById('finishRadius').value = profile.finishLocation.radius;
 
-    // Schedule
-    document.getElementById('dayOfWeek').value = profile.dayOfWeek.toString();
+    // Day of week
+    document.getElementById('anyDay').checked = profile.day.any;
+    document.getElementById('startDay').value = profile.day.startDay.toString();
+    document.getElementById('endDay').value = profile.day.endDay.toString();
 
     // Start time
     document.getElementById('startTimeAny').checked = profile.startTime.any;
@@ -542,6 +571,7 @@ function applyProfile(profile) {
     // Update field states based on checkboxes
     toggleLocationFields('start', profile.startLocation.anywhere);
     toggleLocationFields('finish', profile.finishLocation.anywhere);
+    toggleDayFields(profile.day.any);
     toggleTimeFields('start', profile.startTime.any);
     toggleTimeFields('end', profile.endTime.any);
 }
@@ -580,6 +610,21 @@ function toggleTimeFields(type, isAnyTime) {
     }
 }
 
+// Toggle day fields based on "any day" checkbox
+function toggleDayFields(isAnyDay) {
+    const startDayField = document.getElementById('startDay');
+    const endDayField = document.getElementById('endDay');
+
+    startDayField.disabled = isAnyDay;
+    endDayField.disabled = isAnyDay;
+
+    // Remove required attribute when disabled
+    if (isAnyDay) {
+        startDayField.removeAttribute('required');
+        endDayField.removeAttribute('required');
+    }
+}
+
 // Event listeners
 connectBtn.addEventListener('click', () => {
     if (STRAVA_CONFIG.clientSecret === 'YOUR_STRAVA_CLIENT_SECRET') {
@@ -604,8 +649,10 @@ configForm.addEventListener('submit', (e) => {
     const finishLon = parseFloat(document.getElementById('finishLongitude').value);
     const finishRadius = parseFloat(document.getElementById('finishRadius').value);
 
-    // Get schedule
-    const dayOfWeek = parseInt(document.getElementById('dayOfWeek').value);
+    // Get day of week
+    const anyDay = document.getElementById('anyDay').checked;
+    const startDayValue = parseInt(document.getElementById('startDay').value);
+    const endDayValue = parseInt(document.getElementById('endDay').value);
 
     // Get start time
     const startTimeAny = document.getElementById('startTimeAny').checked;
@@ -629,9 +676,9 @@ configForm.addEventListener('submit', (e) => {
         return;
     }
 
-    // Validate day of week
-    if (isNaN(dayOfWeek)) {
-        showError('Please select a valid day of week.');
+    // Validate day of week (if not "any day")
+    if (!anyDay && (isNaN(startDayValue) || isNaN(endDayValue))) {
+        showError('Please select valid days, or check "Any day".');
         return;
     }
 
@@ -657,11 +704,14 @@ configForm.addEventListener('submit', (e) => {
     const startLocation = startAnywhere ? null : { lat: startLat, lon: startLon, radius: startRadius };
     const finishLocation = finishAnywhere ? null : { lat: finishLat, lon: finishLon, radius: finishRadius };
 
+    // Package day data
+    const day = anyDay ? { any: true } : { any: false, startDay: startDayValue, endDay: endDayValue };
+
     // Package time data
     const startTime = startTimeAny ? { any: true } : { any: false, time: startTimeValue, window: startTimeWindowValue };
     const endTime = endTimeAny ? { any: true } : { any: false, time: endTimeValue, window: endTimeWindowValue };
 
-    analyzeActivities(startLocation, finishLocation, dayOfWeek, startTime, endTime);
+    analyzeActivities(startLocation, finishLocation, day, startTime, endTime);
 });
 
 logoutBtn.addEventListener('click', logout);
@@ -684,6 +734,12 @@ startAnywhereCheckbox.addEventListener('change', (e) => {
 const finishAnywhereCheckbox = document.getElementById('finishAnywhere');
 finishAnywhereCheckbox.addEventListener('change', (e) => {
     toggleLocationFields('finish', e.target.checked);
+});
+
+// Any day checkbox handler
+const anyDayCheckbox = document.getElementById('anyDay');
+anyDayCheckbox.addEventListener('change', (e) => {
+    toggleDayFields(e.target.checked);
 });
 
 // Start time "any time" checkbox handler

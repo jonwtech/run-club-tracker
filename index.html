@@ -85,9 +85,17 @@
                 </div>
 
                 <h3>Schedule</h3>
+                <div class="form-group-checkbox">
+                    <label>
+                        <input type="checkbox" id="anyDay">
+                        Any day
+                    </label>
+                    <small>Filter activities on any day of the week</small>
+                </div>
+
                 <div class="form-group">
-                    <label for="dayOfWeek">Day of Week:</label>
-                    <select id="dayOfWeek" required>
+                    <label for="startDay">Start Day:</label>
+                    <select id="startDay">
                         <option value="0">Sunday</option>
                         <option value="1">Monday</option>
                         <option value="2" selected>Tuesday</option>
@@ -96,6 +104,21 @@
                         <option value="5">Friday</option>
                         <option value="6">Saturday</option>
                     </select>
+                    <small>Day the activity starts on</small>
+                </div>
+
+                <div class="form-group">
+                    <label for="endDay">End Day:</label>
+                    <select id="endDay">
+                        <option value="0">Sunday</option>
+                        <option value="1">Monday</option>
+                        <option value="2" selected>Tuesday</option>
+                        <option value="3">Wednesday</option>
+                        <option value="4">Thursday</option>
+                        <option value="5">Friday</option>
+                        <option value="6">Saturday</option>
+                    </select>
+                    <small>Day the activity ends on (for midnight-crossing runs)</small>
                 </div>
 
                 <h3>Start Time</h3>

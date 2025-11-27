@@ -34,21 +34,52 @@
                     <small>Craft Metropolis Run Club (Tuesday 7pm from Taproom)</small>
                 </div>
 
-                <h3>Location</h3>
-                <div class="form-group">
-                    <label for="latitude">Latitude:</label>
-                    <input type="number" id="latitude" step="0.000001" placeholder="e.g., 51.5074" required>
+                <h3>Start Location</h3>
+                <div class="form-group-checkbox">
+                    <label>
+                        <input type="checkbox" id="startAnywhere">
+                        Anywhere
+                    </label>
                 </div>
 
                 <div class="form-group">
-                    <label for="longitude">Longitude:</label>
-                    <input type="number" id="longitude" step="0.000001" placeholder="e.g., -0.1278" required>
+                    <label for="startLatitude">Latitude:</label>
+                    <input type="number" id="startLatitude" step="0.000001" placeholder="e.g., 51.5074">
                 </div>
 
                 <div class="form-group">
-                    <label for="radius">Search Radius (km):</label>
-                    <input type="number" id="radius" step="0.1" value="0.5" min="0.1" required>
-                    <small>Activities within this distance from the coordinates will be counted</small>
+                    <label for="startLongitude">Longitude:</label>
+                    <input type="number" id="startLongitude" step="0.000001" placeholder="e.g., -0.1278">
+                </div>
+
+                <div class="form-group">
+                    <label for="startRadius">Search Radius (km):</label>
+                    <input type="number" id="startRadius" step="0.1" value="0.5" min="0.1">
+                    <small>Activities starting within this distance from the coordinates will be counted</small>
+                </div>
+
+                <h3>Finish Location</h3>
+                <div class="form-group-checkbox">
+                    <label>
+                        <input type="checkbox" id="finishAnywhere">
+                        Anywhere
+                    </label>
+                </div>
+
+                <div class="form-group">
+                    <label for="finishLatitude">Latitude:</label>
+                    <input type="number" id="finishLatitude" step="0.000001" placeholder="e.g., 51.5074">
+                </div>
+
+                <div class="form-group">
+                    <label for="finishLongitude">Longitude:</label>
+                    <input type="number" id="finishLongitude" step="0.000001" placeholder="e.g., -0.1278">
+                </div>
+
+                <div class="form-group">
+                    <label for="finishRadius">Search Radius (km):</label>
+                    <input type="number" id="finishRadius" step="0.1" value="0.5" min="0.1">
+                    <small>Activities finishing within this distance from the coordinates will be counted</small>
                 </div>
 
                 <h3>Schedule</h3>

@@ -29,6 +29,24 @@ const PROFILES = {
         startTime: '19:00',
         timeWindow: 15
     },
+    crystalpalace: {
+        name: 'Crystal Palace Parkrun',
+        startLocation: {
+            anywhere: false,
+            lat: 51.41918253541567,
+            lon: -0.0630248176967856,
+            radius: 0.5
+        },
+        finishLocation: {
+            anywhere: false,
+            lat: 51.41918253541567,
+            lon: -0.0630248176967856,
+            radius: 0.5
+        },
+        dayOfWeek: 6, // Saturday
+        startTime: '09:00',
+        timeWindow: 15
+    },
     custom: {
         name: 'Custom',
         // Custom profile starts with empty/default values

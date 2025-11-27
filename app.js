@@ -9,6 +9,47 @@ const STRAVA_CONFIG = {
     scope: 'activity:read'
 };
 
+// Profile definitions
+const PROFILES = {
+    cmrc: {
+        name: 'Craft Metropolis Run Club',
+        startLocation: {
+            anywhere: true,
+            lat: null,
+            lon: null,
+            radius: 0.5
+        },
+        finishLocation: {
+            anywhere: false,
+            lat: 51.417408,
+            lon: -0.057741,
+            radius: 0.5
+        },
+        dayOfWeek: 2, // Tuesday
+        startTime: '19:00',
+        timeWindow: 15
+    },
+    custom: {
+        name: 'Custom',
+        // Custom profile starts with empty/default values
+        startLocation: {
+            anywhere: false,
+            lat: null,
+            lon: null,
+            radius: 0.5
+        },
+        finishLocation: {
+            anywhere: false,
+            lat: null,
+            lon: null,
+            radius: 0.5
+        },
+        dayOfWeek: 2, // Tuesday
+        startTime: '19:00',
+        timeWindow: 15
+    }
+};
+
 // DOM elements
 const loginSection = document.getElementById('loginSection');
 const configSection = document.getElementById('configSection');
@@ -404,52 +445,28 @@ function logout() {
     showSection('login');
 }
 
-// Apply CMRC defaults to form fields
-function applyCMRCDefaults() {
-    // Start location: Anywhere
-    document.getElementById('startAnywhere').checked = true;
-    document.getElementById('startLatitude').value = '';
-    document.getElementById('startLongitude').value = '';
-    document.getElementById('startRadius').value = '0.5';
-
-    // Finish location: Taproom coordinates
-    document.getElementById('finishAnywhere').checked = false;
-    document.getElementById('finishLatitude').value = '51.417408';
-    document.getElementById('finishLongitude').value = '-0.057741';
-    document.getElementById('finishRadius').value = '0.5';
-
-    // Schedule
-    document.getElementById('dayOfWeek').value = '2'; // Tuesday
-    document.getElementById('startTime').value = '19:00';
-    document.getElementById('timeWindow').value = '15';
-
-    // Update field states based on "anywhere" checkboxes
-    toggleLocationFields('start', true);
-    toggleLocationFields('finish', false);
-}
-
-// Clear form fields
-function clearFormFields() {
+// Apply a profile to form fields
+function applyProfile(profile) {
     // Start location
-    document.getElementById('startAnywhere').checked = false;
-    document.getElementById('startLatitude').value = '';
-    document.getElementById('startLongitude').value = '';
-    document.getElementById('startRadius').value = '0.5';
+    document.getElementById('startAnywhere').checked = profile.startLocation.anywhere;
+    document.getElementById('startLatitude').value = profile.startLocation.lat || '';
+    document.getElementById('startLongitude').value = profile.startLocation.lon || '';
+    document.getElementById('startRadius').value = profile.startLocation.radius;
 
     // Finish location
-    document.getElementById('finishAnywhere').checked = false;
-    document.getElementById('finishLatitude').value = '';
-    document.getElementById('finishLongitude').value = '';
-    document.getElementById('finishRadius').value = '0.5';
+    document.getElementById('finishAnywhere').checked = profile.finishLocation.anywhere;
+    document.getElementById('finishLatitude').value = profile.finishLocation.lat || '';
+    document.getElementById('finishLongitude').value = profile.finishLocation.lon || '';
+    document.getElementById('finishRadius').value = profile.finishLocation.radius;
 
-    // Schedule (keep defaults)
-    document.getElementById('dayOfWeek').value = '2'; // Keep default Tuesday
-    document.getElementById('startTime').value = '19:00'; // Keep default time
-    document.getElementById('timeWindow').value = '15'; // Keep default window
+    // Schedule
+    document.getElementById('dayOfWeek').value = profile.dayOfWeek.toString();
+    document.getElementById('startTime').value = profile.startTime;
+    document.getElementById('timeWindow').value = profile.timeWindow.toString();
 
-    // Update field states
-    toggleLocationFields('start', false);
-    toggleLocationFields('finish', false);
+    // Update field states based on "anywhere" checkboxes
+    toggleLocationFields('start', profile.startLocation.anywhere);
+    toggleLocationFields('finish', profile.finishLocation.anywhere);
 }
 
 // Toggle location fields based on "anywhere" checkbox
@@ -547,21 +564,23 @@ finishAnywhereCheckbox.addEventListener('change', (e) => {
     toggleLocationFields('finish', e.target.checked);
 });
 
-// CMRC defaults checkbox handler
-const useCMRCDefaultsCheckbox = document.getElementById('useCMRCDefaults');
-useCMRCDefaultsCheckbox.addEventListener('change', (e) => {
-    if (e.target.checked) {
-        applyCMRCDefaults();
-    } else {
-        clearFormFields();
+// Profile selector handler
+const profileSelect = document.getElementById('profileSelect');
+profileSelect.addEventListener('change', (e) => {
+    const selectedProfileKey = e.target.value;
+    const profile = PROFILES[selectedProfileKey];
+    if (profile) {
+        applyProfile(profile);
     }
 });
 
 // Initialize app
 async function init() {
-    // Initialize CMRC defaults if checkbox is checked
-    if (useCMRCDefaultsCheckbox.checked) {
-        applyCMRCDefaults();
+    // Initialize with selected profile (defaults to CMRC)
+    const selectedProfileKey = profileSelect.value;
+    const profile = PROFILES[selectedProfileKey];
+    if (profile) {
+        applyProfile(profile);
     }
 
     // Check for OAuth callback (code in query params for authorization code flow)

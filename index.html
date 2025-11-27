@@ -26,12 +26,13 @@
             <p>Configure your run club's meeting details to filter activities:</p>
 
             <form id="configForm">
-                <div class="form-group-checkbox">
-                    <label>
-                        <input type="checkbox" id="useCMRCDefaults" checked>
-                        Use CMRC defaults
-                    </label>
-                    <small>Craft Metropolis Run Club (Tuesday 7pm from Taproom)</small>
+                <div class="form-group">
+                    <label for="profileSelect">Profile:</label>
+                    <select id="profileSelect" required>
+                        <option value="cmrc" selected>Craft Metropolis Run Club</option>
+                        <option value="custom">Custom</option>
+                    </select>
+                    <small>Select a pre-configured profile or choose Custom to configure your own</small>
                 </div>
 
                 <h3>Start Location</h3>

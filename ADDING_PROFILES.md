@@ -41,7 +41,11 @@ const PROFILES = {
             lon: -0.1278,                 // Longitude (null if anywhere = true)
             radius: 0.5                   // Search radius in kilometers
         },
-        dayOfWeek: 2,                     // 0 = Sunday, 1 = Monday, 2 = Tuesday, etc.
+        day: {
+            any: false,                   // true = ignore day of week, false = filter by day
+            startDay: 2,                  // 0 = Sunday, 1 = Monday, 2 = Tuesday, etc.
+            endDay: 2                     // Day activity ends (usually same as startDay, different for midnight-crossing runs)
+        },
         startTime: {
             any: false,                   // true = ignore start time, false = filter by start time
             time: '19:00',                // 24-hour format (HH:MM), null if any = true
@@ -83,7 +87,7 @@ Open `index.html` and locate the `profileSelect` dropdown (around line 30-35). A
 | `name` | String | Display name for the run club |
 | `startLocation` | Object | Starting location configuration |
 | `finishLocation` | Object | Finishing location configuration |
-| `dayOfWeek` | Number | Day of the week (0-6) |
+| `day` | Object | Day of week configuration (see Day Object below) |
 | `startTime` | Object | Start time configuration (see Time Object below) |
 | `endTime` | Object | End time configuration (see Time Object below) |
 
@@ -95,6 +99,16 @@ Open `index.html` and locate the `profileSelect` dropdown (around line 30-35). A
 | `lat` | Number/null | Latitude in decimal degrees (null if anywhere = true) |
 | `lon` | Number/null | Longitude in decimal degrees (null if anywhere = true) |
 | `radius` | Number | Search radius in kilometers |
+
+### Day Object Fields
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `any` | Boolean | If `true`, day filtering is skipped |
+| `startDay` | Number | Day activity starts (0 = Sunday, 1 = Monday, etc.) |
+| `endDay` | Number | Day activity ends (usually same as startDay, different for midnight-crossing runs) |
+
+**Note**: For most runs, `startDay` and `endDay` will be the same. Use different days for night runs that cross midnight (e.g., start Friday night, end Saturday morning).
 
 ### Time Object Fields
 
@@ -138,7 +152,11 @@ traditionalclub: {
         lon: -0.1278,           // Same as start
         radius: 0.5
     },
-    dayOfWeek: 3,               // Wednesday
+    day: {
+        any: false,
+        startDay: 3,            // Wednesday
+        endDay: 3               // Same day
+    },
     startTime: {
         any: false,
         time: '18:30',
@@ -170,7 +188,11 @@ pubrun: {
         lon: -0.1278,
         radius: 0.5
     },
-    dayOfWeek: 4,               // Thursday
+    day: {
+        any: false,
+        startDay: 4,            // Thursday
+        endDay: 4               // Same day
+    },
     startTime: {
         any: true,              // Can start any time
         time: null,
@@ -202,7 +224,11 @@ parkrun: {
         lon: -0.1278,
         radius: 0.5
     },
-    dayOfWeek: 6,               // Saturday
+    day: {
+        any: false,
+        startDay: 6,            // Saturday
+        endDay: 6               // Same day
+    },
     startTime: {
         any: false,
         time: '09:00',
@@ -234,7 +260,11 @@ socialrun: {
         lon: null,
         radius: 0.5
     },
-    dayOfWeek: 0,               // Sunday
+    day: {
+        any: false,
+        startDay: 0,            // Sunday
+        endDay: 0               // Same day
+    },
     startTime: {
         any: false,
         time: '10:00',
@@ -244,6 +274,42 @@ socialrun: {
         any: true,              // Any end time
         time: null,
         window: null
+    }
+}
+```
+
+### Pattern 5: Midnight Run (Crosses Days)
+Night run that starts late and crosses midnight:
+
+```javascript
+midnightrun: {
+    name: 'Friday Night Run',
+    startLocation: {
+        anywhere: false,
+        lat: 51.5074,
+        lon: -0.1278,
+        radius: 0.5
+    },
+    finishLocation: {
+        anywhere: false,
+        lat: 51.5074,
+        lon: -0.1278,
+        radius: 0.5
+    },
+    day: {
+        any: false,
+        startDay: 5,            // Friday
+        endDay: 6               // Saturday (crosses midnight)
+    },
+    startTime: {
+        any: false,
+        time: '23:00',          // 11pm start
+        window: 30
+    },
+    endTime: {
+        any: false,
+        time: '00:30',          // 12:30am finish (next day)
+        window: 30
     }
 }
 ```
@@ -365,7 +431,11 @@ fnl: {
         lon: -0.0545,
         radius: 0.3
     },
-    dayOfWeek: 5,           // Friday
+    day: {
+        any: false,
+        startDay: 5,        // Friday
+        endDay: 5           // Same day
+    },
     startTime: {
         any: false,
         time: '19:30',

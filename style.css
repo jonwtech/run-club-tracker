@@ -180,6 +180,14 @@ header p {
     border-color: var(--primary-color);
 }
 
+.form-group input:disabled,
+.form-group select:disabled {
+    background-color: var(--background-color);
+    color: var(--text-secondary);
+    cursor: not-allowed;
+    opacity: 0.6;
+}
+
 .form-group small {
     display: block;
     margin-top: 0.5rem;

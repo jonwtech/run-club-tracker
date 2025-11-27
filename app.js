@@ -177,23 +177,40 @@ async function getStravaActivities(accessToken) {
 }
 
 // Check if an activity qualifies as a Run Club run
-function isRunClubActivity(activity, clubLat, clubLon, maxDistanceKm, dayOfWeek, startTime, timeWindow) {
+function isRunClubActivity(activity, startLocation, finishLocation, dayOfWeek, startTime, timeWindow) {
     // Check if it's a run
     if (activity.type !== 'Run') {
         return false;
     }
 
-    // Check start location
-    const startLatlng = activity.start_latlng;
-    if (!startLatlng || startLatlng.length !== 2) {
-        return false;
+    // Check start location (if specified)
+    if (startLocation) {
+        const startLatlng = activity.start_latlng;
+        if (!startLatlng || startLatlng.length !== 2) {
+            return false;
+        }
+
+        const [activityStartLat, activityStartLon] = startLatlng;
+        const startDistanceKm = haversine(startLocation.lon, startLocation.lat, activityStartLon, activityStartLat);
+
+        if (startDistanceKm > startLocation.radius) {
+            return false;
+        }
     }
 
-    const [startLat, startLon] = startLatlng;
-    const distanceKm = haversine(clubLon, clubLat, startLon, startLat);
+    // Check finish location (if specified)
+    if (finishLocation) {
+        const endLatlng = activity.end_latlng;
+        if (!endLatlng || endLatlng.length !== 2) {
+            return false;
+        }
 
-    if (distanceKm > maxDistanceKm) {
-        return false;
+        const [activityEndLat, activityEndLon] = endLatlng;
+        const finishDistanceKm = haversine(finishLocation.lon, finishLocation.lat, activityEndLon, activityEndLat);
+
+        if (finishDistanceKm > finishLocation.radius) {
+            return false;
+        }
     }
 
     // Check time - use local time
@@ -266,7 +283,7 @@ function formatTime(seconds) {
 }
 
 // Analyze activities
-async function analyzeActivities(clubLat, clubLon, radiusKm, dayOfWeek, startTime, timeWindow) {
+async function analyzeActivities(startLocation, finishLocation, dayOfWeek, startTime, timeWindow) {
     showSection('loading');
 
     try {
@@ -281,7 +298,7 @@ async function analyzeActivities(clubLat, clubLon, radiusKm, dayOfWeek, startTim
 
         // Filter for run club activities
         const runClubActivities = activities.filter(activity =>
-            isRunClubActivity(activity, clubLat, clubLon, radiusKm, dayOfWeek, startTime, timeWindow)
+            isRunClubActivity(activity, startLocation, finishLocation, dayOfWeek, startTime, timeWindow)
         );
 
         // Calculate stats
@@ -389,22 +406,69 @@ function logout() {
 
 // Apply CMRC defaults to form fields
 function applyCMRCDefaults() {
-    document.getElementById('latitude').value = '51.417408';
-    document.getElementById('longitude').value = '-0.057741';
-    document.getElementById('radius').value = '0.5';
+    // Start location: Anywhere
+    document.getElementById('startAnywhere').checked = true;
+    document.getElementById('startLatitude').value = '';
+    document.getElementById('startLongitude').value = '';
+    document.getElementById('startRadius').value = '0.5';
+
+    // Finish location: Taproom coordinates
+    document.getElementById('finishAnywhere').checked = false;
+    document.getElementById('finishLatitude').value = '51.417408';
+    document.getElementById('finishLongitude').value = '-0.057741';
+    document.getElementById('finishRadius').value = '0.5';
+
+    // Schedule
     document.getElementById('dayOfWeek').value = '2'; // Tuesday
     document.getElementById('startTime').value = '19:00';
     document.getElementById('timeWindow').value = '15';
+
+    // Update field states based on "anywhere" checkboxes
+    toggleLocationFields('start', true);
+    toggleLocationFields('finish', false);
 }
 
 // Clear form fields
 function clearFormFields() {
-    document.getElementById('latitude').value = '';
-    document.getElementById('longitude').value = '';
-    document.getElementById('radius').value = '0.5'; // Keep default radius
+    // Start location
+    document.getElementById('startAnywhere').checked = false;
+    document.getElementById('startLatitude').value = '';
+    document.getElementById('startLongitude').value = '';
+    document.getElementById('startRadius').value = '0.5';
+
+    // Finish location
+    document.getElementById('finishAnywhere').checked = false;
+    document.getElementById('finishLatitude').value = '';
+    document.getElementById('finishLongitude').value = '';
+    document.getElementById('finishRadius').value = '0.5';
+
+    // Schedule (keep defaults)
     document.getElementById('dayOfWeek').value = '2'; // Keep default Tuesday
     document.getElementById('startTime').value = '19:00'; // Keep default time
     document.getElementById('timeWindow').value = '15'; // Keep default window
+
+    // Update field states
+    toggleLocationFields('start', false);
+    toggleLocationFields('finish', false);
+}
+
+// Toggle location fields based on "anywhere" checkbox
+function toggleLocationFields(type, isAnywhere) {
+    const prefix = type; // 'start' or 'finish'
+    const latField = document.getElementById(`${prefix}Latitude`);
+    const lonField = document.getElementById(`${prefix}Longitude`);
+    const radiusField = document.getElementById(`${prefix}Radius`);
+
+    latField.disabled = isAnywhere;
+    lonField.disabled = isAnywhere;
+    radiusField.disabled = isAnywhere;
+
+    // Remove required attribute when disabled
+    if (isAnywhere) {
+        latField.removeAttribute('required');
+        lonField.removeAttribute('required');
+        radiusField.removeAttribute('required');
+    }
 }
 
 // Event listeners
@@ -418,24 +482,47 @@ connectBtn.addEventListener('click', () => {
 
 configForm.addEventListener('submit', (e) => {
     e.preventDefault();
-    const latitude = parseFloat(document.getElementById('latitude').value);
-    const longitude = parseFloat(document.getElementById('longitude').value);
-    const radius = parseFloat(document.getElementById('radius').value);
+
+    // Get start location
+    const startAnywhere = document.getElementById('startAnywhere').checked;
+    const startLat = parseFloat(document.getElementById('startLatitude').value);
+    const startLon = parseFloat(document.getElementById('startLongitude').value);
+    const startRadius = parseFloat(document.getElementById('startRadius').value);
+
+    // Get finish location
+    const finishAnywhere = document.getElementById('finishAnywhere').checked;
+    const finishLat = parseFloat(document.getElementById('finishLatitude').value);
+    const finishLon = parseFloat(document.getElementById('finishLongitude').value);
+    const finishRadius = parseFloat(document.getElementById('finishRadius').value);
+
+    // Get schedule
     const dayOfWeek = parseInt(document.getElementById('dayOfWeek').value);
     const startTime = document.getElementById('startTime').value;
     const timeWindow = parseInt(document.getElementById('timeWindow').value);
 
-    if (isNaN(latitude) || isNaN(longitude) || isNaN(radius)) {
-        showError('Please enter valid coordinates and radius.');
+    // Validate start location (if not "anywhere")
+    if (!startAnywhere && (isNaN(startLat) || isNaN(startLon) || isNaN(startRadius))) {
+        showError('Please enter valid start location coordinates and radius, or check "Anywhere".');
         return;
     }
 
+    // Validate finish location (if not "anywhere")
+    if (!finishAnywhere && (isNaN(finishLat) || isNaN(finishLon) || isNaN(finishRadius))) {
+        showError('Please enter valid finish location coordinates and radius, or check "Anywhere".');
+        return;
+    }
+
+    // Validate schedule
     if (isNaN(dayOfWeek) || !startTime || isNaN(timeWindow)) {
         showError('Please enter valid day, start time, and time window.');
         return;
     }
 
-    analyzeActivities(latitude, longitude, radius, dayOfWeek, startTime, timeWindow);
+    // Package location data
+    const startLocation = startAnywhere ? null : { lat: startLat, lon: startLon, radius: startRadius };
+    const finishLocation = finishAnywhere ? null : { lat: finishLat, lon: finishLon, radius: finishRadius };
+
+    analyzeActivities(startLocation, finishLocation, dayOfWeek, startTime, timeWindow);
 });
 
 logoutBtn.addEventListener('click', logout);
@@ -446,6 +533,18 @@ analyzeAgainBtn.addEventListener('click', () => {
 
 retryBtn.addEventListener('click', () => {
     showSection('login');
+});
+
+// Start location "anywhere" checkbox handler
+const startAnywhereCheckbox = document.getElementById('startAnywhere');
+startAnywhereCheckbox.addEventListener('change', (e) => {
+    toggleLocationFields('start', e.target.checked);
+});
+
+// Finish location "anywhere" checkbox handler
+const finishAnywhereCheckbox = document.getElementById('finishAnywhere');
+finishAnywhereCheckbox.addEventListener('change', (e) => {
+    toggleLocationFields('finish', e.target.checked);
 });
 
 // CMRC defaults checkbox handler

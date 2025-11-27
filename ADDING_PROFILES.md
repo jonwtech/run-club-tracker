@@ -42,8 +42,16 @@ const PROFILES = {
             radius: 0.5                   // Search radius in kilometers
         },
         dayOfWeek: 2,                     // 0 = Sunday, 1 = Monday, 2 = Tuesday, etc.
-        startTime: '19:00',               // 24-hour format (HH:MM)
-        timeWindow: 15                    // Minutes +/- from start time
+        startTime: {
+            any: false,                   // true = ignore start time, false = filter by start time
+            time: '19:00',                // 24-hour format (HH:MM), null if any = true
+            window: 15                    // Minutes +/- from start time, null if any = true
+        },
+        endTime: {
+            any: true,                    // true = ignore end time, false = filter by end time
+            time: null,                   // 24-hour format (HH:MM), null if any = true
+            window: null                  // Minutes +/- from end time, null if any = true
+        }
     }
 };
 ```
@@ -76,8 +84,8 @@ Open `index.html` and locate the `profileSelect` dropdown (around line 30-35). A
 | `startLocation` | Object | Starting location configuration |
 | `finishLocation` | Object | Finishing location configuration |
 | `dayOfWeek` | Number | Day of the week (0-6) |
-| `startTime` | String | Start time in HH:MM format |
-| `timeWindow` | Number | Minutes +/- from start time |
+| `startTime` | Object | Start time configuration (see Time Object below) |
+| `endTime` | Object | End time configuration (see Time Object below) |
 
 ### Location Object Fields
 
@@ -87,6 +95,16 @@ Open `index.html` and locate the `profileSelect` dropdown (around line 30-35). A
 | `lat` | Number/null | Latitude in decimal degrees (null if anywhere = true) |
 | `lon` | Number/null | Longitude in decimal degrees (null if anywhere = true) |
 | `radius` | Number | Search radius in kilometers |
+
+### Time Object Fields
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `any` | Boolean | If `true`, time filtering is skipped for this constraint |
+| `time` | String/null | Time in HH:MM format (24-hour), null if any = true |
+| `window` | Number/null | Minutes +/- from the specified time, null if any = true |
+
+**Note**: At least one time constraint (startTime or endTime) must be specified (i.e., not "any").
 
 ### Day of Week Values
 
@@ -103,7 +121,7 @@ Open `index.html` and locate the `profileSelect` dropdown (around line 30-35). A
 ## Common Profile Patterns
 
 ### Pattern 1: Traditional Run Club
-Same start and finish location, specific day/time:
+Same start and finish location, specific start time:
 
 ```javascript
 traditionalclub: {
@@ -121,13 +139,21 @@ traditionalclub: {
         radius: 0.5
     },
     dayOfWeek: 3,               // Wednesday
-    startTime: '18:30',
-    timeWindow: 15
+    startTime: {
+        any: false,
+        time: '18:30',
+        window: 15
+    },
+    endTime: {
+        any: true,              // Any end time
+        time: null,
+        window: null
+    }
 }
 ```
 
 ### Pattern 2: Pub Run
-Start anywhere, finish at specific location:
+Start anywhere, finish at specific location and end time:
 
 ```javascript
 pubrun: {
@@ -145,8 +171,16 @@ pubrun: {
         radius: 0.5
     },
     dayOfWeek: 4,               // Thursday
-    startTime: '19:00',
-    timeWindow: 15
+    startTime: {
+        any: true,              // Can start any time
+        time: null,
+        window: null
+    },
+    endTime: {
+        any: false,             // Must finish around 7:30pm
+        time: '19:30',
+        window: 60              // Wide window for social runs
+    }
 }
 ```
 
@@ -169,13 +203,21 @@ parkrun: {
         radius: 0.5
     },
     dayOfWeek: 6,               // Saturday
-    startTime: '09:00',
-    timeWindow: 15
+    startTime: {
+        any: false,
+        time: '09:00',
+        window: 15
+    },
+    endTime: {
+        any: true,              // Any end time
+        time: null,
+        window: null
+    }
 }
 ```
 
 ### Pattern 4: Social Run (Flexible)
-Any location, any time, specific day:
+Any location, flexible start time, specific day:
 
 ```javascript
 socialrun: {
@@ -193,8 +235,16 @@ socialrun: {
         radius: 0.5
     },
     dayOfWeek: 0,               // Sunday
-    startTime: '10:00',
-    timeWindow: 30              // Wider window for social runs
+    startTime: {
+        any: false,
+        time: '10:00',
+        window: 30              // Wider window for social runs
+    },
+    endTime: {
+        any: true,              // Any end time
+        time: null,
+        window: null
+    }
 }
 ```
 
@@ -316,8 +366,16 @@ fnl: {
         radius: 0.3
     },
     dayOfWeek: 5,           // Friday
-    startTime: '19:30',
-    timeWindow: 10          // Stricter time window
+    startTime: {
+        any: false,
+        time: '19:30',
+        window: 10          // Stricter time window
+    },
+    endTime: {
+        any: true,
+        time: null,
+        window: null
+    }
 }
 ```
 

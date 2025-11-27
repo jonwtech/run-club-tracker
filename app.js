@@ -26,8 +26,16 @@ const PROFILES = {
             radius: 0.5
         },
         dayOfWeek: 2, // Tuesday
-        startTime: '19:00',
-        timeWindow: 15
+        startTime: {
+            any: true,
+            time: null,
+            window: null
+        },
+        endTime: {
+            any: false,
+            time: '19:30',
+            window: 60
+        }
     },
     crystalpalace: {
         name: 'Crystal Palace Parkrun',
@@ -44,8 +52,16 @@ const PROFILES = {
             radius: 0.5
         },
         dayOfWeek: 6, // Saturday
-        startTime: '09:00',
-        timeWindow: 15
+        startTime: {
+            any: false,
+            time: '09:00',
+            window: 15
+        },
+        endTime: {
+            any: true,
+            time: null,
+            window: null
+        }
     },
     custom: {
         name: 'Custom',
@@ -63,8 +79,16 @@ const PROFILES = {
             radius: 0.5
         },
         dayOfWeek: 2, // Tuesday
-        startTime: '19:00',
-        timeWindow: 15
+        startTime: {
+            any: false,
+            time: '19:00',
+            window: 15
+        },
+        endTime: {
+            any: true,
+            time: null,
+            window: null
+        }
     }
 };
 
@@ -236,7 +260,7 @@ async function getStravaActivities(accessToken) {
 }
 
 // Check if an activity qualifies as a Run Club run
-function isRunClubActivity(activity, startLocation, finishLocation, dayOfWeek, startTime, timeWindow) {
+function isRunClubActivity(activity, startLocation, finishLocation, dayOfWeek, startTime, endTime) {
     // Check if it's a run
     if (activity.type !== 'Run') {
         return false;
@@ -272,7 +296,7 @@ function isRunClubActivity(activity, startLocation, finishLocation, dayOfWeek, s
         }
     }
 
-    // Check time - use local time
+    // Check date/time - use local time
     const startDateLocal = activity.start_date_local;
     if (!startDateLocal) {
         return false;
@@ -284,28 +308,53 @@ function isRunClubActivity(activity, startLocation, finishLocation, dayOfWeek, s
         // but may have a 'Z' suffix. We need to treat it as-is without timezone conversion.
         // Remove the 'Z' suffix if present to parse as local time
         const dateString = startDateLocal.replace('Z', '');
-        const dt = new Date(dateString);
+        const activityStartDate = new Date(dateString);
 
         // Check day of week (0 = Sunday, 1 = Monday, etc.)
-        if (dt.getDay() !== dayOfWeek) {
+        if (activityStartDate.getDay() !== dayOfWeek) {
             return false;
         }
 
-        // Parse start time (format: "HH:MM")
-        const [targetHours, targetMinutes] = startTime.split(':').map(Number);
-        const targetTimeInMinutes = targetHours * 60 + targetMinutes;
+        // Check start time (if specified)
+        if (startTime && !startTime.any) {
+            const [targetHours, targetMinutes] = startTime.time.split(':').map(Number);
+            const targetTimeInMinutes = targetHours * 60 + targetMinutes;
 
-        // Calculate time window
-        const minTime = targetTimeInMinutes - timeWindow;
-        const maxTime = targetTimeInMinutes + timeWindow;
+            const minTime = targetTimeInMinutes - startTime.window;
+            const maxTime = targetTimeInMinutes + startTime.window;
 
-        // Check if activity started within the time window
-        const hours = dt.getHours();
-        const minutes = dt.getMinutes();
-        const totalMinutes = hours * 60 + minutes;
+            const hours = activityStartDate.getHours();
+            const minutes = activityStartDate.getMinutes();
+            const totalMinutes = hours * 60 + minutes;
 
-        if (totalMinutes < minTime || totalMinutes > maxTime) {
-            return false;
+            if (totalMinutes < minTime || totalMinutes > maxTime) {
+                return false;
+            }
+        }
+
+        // Check end time (if specified)
+        if (endTime && !endTime.any) {
+            // Calculate activity end time by adding elapsed_time (in seconds) to start time
+            const elapsedTimeSeconds = activity.elapsed_time;
+            if (!elapsedTimeSeconds) {
+                return false;
+            }
+
+            const activityEndDate = new Date(activityStartDate.getTime() + elapsedTimeSeconds * 1000);
+
+            const [targetHours, targetMinutes] = endTime.time.split(':').map(Number);
+            const targetTimeInMinutes = targetHours * 60 + targetMinutes;
+
+            const minTime = targetTimeInMinutes - endTime.window;
+            const maxTime = targetTimeInMinutes + endTime.window;
+
+            const hours = activityEndDate.getHours();
+            const minutes = activityEndDate.getMinutes();
+            const totalMinutes = hours * 60 + minutes;
+
+            if (totalMinutes < minTime || totalMinutes > maxTime) {
+                return false;
+            }
         }
 
         return true;
@@ -342,7 +391,7 @@ function formatTime(seconds) {
 }
 
 // Analyze activities
-async function analyzeActivities(startLocation, finishLocation, dayOfWeek, startTime, timeWindow) {
+async function analyzeActivities(startLocation, finishLocation, dayOfWeek, startTime, endTime) {
     showSection('loading');
 
     try {
@@ -357,7 +406,7 @@ async function analyzeActivities(startLocation, finishLocation, dayOfWeek, start
 
         // Filter for run club activities
         const runClubActivities = activities.filter(activity =>
-            isRunClubActivity(activity, startLocation, finishLocation, dayOfWeek, startTime, timeWindow)
+            isRunClubActivity(activity, startLocation, finishLocation, dayOfWeek, startTime, endTime)
         );
 
         // Calculate stats
@@ -479,12 +528,22 @@ function applyProfile(profile) {
 
     // Schedule
     document.getElementById('dayOfWeek').value = profile.dayOfWeek.toString();
-    document.getElementById('startTime').value = profile.startTime;
-    document.getElementById('timeWindow').value = profile.timeWindow.toString();
 
-    // Update field states based on "anywhere" checkboxes
+    // Start time
+    document.getElementById('startTimeAny').checked = profile.startTime.any;
+    document.getElementById('startTime').value = profile.startTime.time || '';
+    document.getElementById('startTimeWindow').value = profile.startTime.window || '';
+
+    // End time
+    document.getElementById('endTimeAny').checked = profile.endTime.any;
+    document.getElementById('endTime').value = profile.endTime.time || '';
+    document.getElementById('endTimeWindow').value = profile.endTime.window || '';
+
+    // Update field states based on checkboxes
     toggleLocationFields('start', profile.startLocation.anywhere);
     toggleLocationFields('finish', profile.finishLocation.anywhere);
+    toggleTimeFields('start', profile.startTime.any);
+    toggleTimeFields('end', profile.endTime.any);
 }
 
 // Toggle location fields based on "anywhere" checkbox
@@ -503,6 +562,21 @@ function toggleLocationFields(type, isAnywhere) {
         latField.removeAttribute('required');
         lonField.removeAttribute('required');
         radiusField.removeAttribute('required');
+    }
+}
+
+// Toggle time fields based on "any time" checkbox
+function toggleTimeFields(type, isAnyTime) {
+    const timeField = document.getElementById(`${type}Time`);
+    const windowField = document.getElementById(`${type}TimeWindow`);
+
+    timeField.disabled = isAnyTime;
+    windowField.disabled = isAnyTime;
+
+    // Remove required attribute when disabled
+    if (isAnyTime) {
+        timeField.removeAttribute('required');
+        windowField.removeAttribute('required');
     }
 }
 
@@ -532,8 +606,16 @@ configForm.addEventListener('submit', (e) => {
 
     // Get schedule
     const dayOfWeek = parseInt(document.getElementById('dayOfWeek').value);
-    const startTime = document.getElementById('startTime').value;
-    const timeWindow = parseInt(document.getElementById('timeWindow').value);
+
+    // Get start time
+    const startTimeAny = document.getElementById('startTimeAny').checked;
+    const startTimeValue = document.getElementById('startTime').value;
+    const startTimeWindowValue = parseInt(document.getElementById('startTimeWindow').value);
+
+    // Get end time
+    const endTimeAny = document.getElementById('endTimeAny').checked;
+    const endTimeValue = document.getElementById('endTime').value;
+    const endTimeWindowValue = parseInt(document.getElementById('endTimeWindow').value);
 
     // Validate start location (if not "anywhere")
     if (!startAnywhere && (isNaN(startLat) || isNaN(startLon) || isNaN(startRadius))) {
@@ -547,9 +629,27 @@ configForm.addEventListener('submit', (e) => {
         return;
     }
 
-    // Validate schedule
-    if (isNaN(dayOfWeek) || !startTime || isNaN(timeWindow)) {
-        showError('Please enter valid day, start time, and time window.');
+    // Validate day of week
+    if (isNaN(dayOfWeek)) {
+        showError('Please select a valid day of week.');
+        return;
+    }
+
+    // Validate start time (if not "any")
+    if (!startTimeAny && (!startTimeValue || isNaN(startTimeWindowValue))) {
+        showError('Please enter valid start time and time window, or check "Any time".');
+        return;
+    }
+
+    // Validate end time (if not "any")
+    if (!endTimeAny && (!endTimeValue || isNaN(endTimeWindowValue))) {
+        showError('Please enter valid end time and time window, or check "Any time".');
+        return;
+    }
+
+    // Validate that at least one time constraint is set
+    if (startTimeAny && endTimeAny) {
+        showError('Please specify at least one time constraint (start time or end time).');
         return;
     }
 
@@ -557,7 +657,11 @@ configForm.addEventListener('submit', (e) => {
     const startLocation = startAnywhere ? null : { lat: startLat, lon: startLon, radius: startRadius };
     const finishLocation = finishAnywhere ? null : { lat: finishLat, lon: finishLon, radius: finishRadius };
 
-    analyzeActivities(startLocation, finishLocation, dayOfWeek, startTime, timeWindow);
+    // Package time data
+    const startTime = startTimeAny ? { any: true } : { any: false, time: startTimeValue, window: startTimeWindowValue };
+    const endTime = endTimeAny ? { any: true } : { any: false, time: endTimeValue, window: endTimeWindowValue };
+
+    analyzeActivities(startLocation, finishLocation, dayOfWeek, startTime, endTime);
 });
 
 logoutBtn.addEventListener('click', logout);
@@ -580,6 +684,18 @@ startAnywhereCheckbox.addEventListener('change', (e) => {
 const finishAnywhereCheckbox = document.getElementById('finishAnywhere');
 finishAnywhereCheckbox.addEventListener('change', (e) => {
     toggleLocationFields('finish', e.target.checked);
+});
+
+// Start time "any time" checkbox handler
+const startTimeAnyCheckbox = document.getElementById('startTimeAny');
+startTimeAnyCheckbox.addEventListener('change', (e) => {
+    toggleTimeFields('start', e.target.checked);
+});
+
+// End time "any time" checkbox handler
+const endTimeAnyCheckbox = document.getElementById('endTimeAny');
+endTimeAnyCheckbox.addEventListener('change', (e) => {
+    toggleTimeFields('end', e.target.checked);
 });
 
 // Profile selector handler
